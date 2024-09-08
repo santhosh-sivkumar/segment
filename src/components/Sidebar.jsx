@@ -1,18 +1,14 @@
-// @ts-nocheck
 import React, { useState } from "react";
 import Dot from "./Dot";
-import { FaChevronLeft } from "react-icons/fa";
-import { FaPlus } from "react-icons/fa6";
+import { FaChevronLeft, FaPlus, FaMinus } from "react-icons/fa";
+
 const initialSchemaOptions = [
   { label: "First Name", value: "first_name" },
   { label: "Last Name", value: "last_name" },
   { label: "Gender", value: "gender" },
-];
-
-const additionalSchemaOptions = [
   { label: "Age", value: "age" },
+  { label: "Account Name", value: "account_name" },
   { label: "City", value: "city" },
-  { label: "State", value: "state" },
 ];
 
 const green = "bg-green-500";
@@ -21,47 +17,65 @@ const gray = "bg-gray-300";
 
 function Sidebar({ onClose }) {
   const [segmentName, setSegmentName] = useState("");
-  const [schemaOptions, setSchemaOptions] = useState(initialSchemaOptions);
-  const [selectedSchemaValue, setSelectedSchemaValue] = useState("");
   const [selectedSchemas, setSelectedSchemas] = useState([]);
   const [selectedValues, setSelectedValues] = useState({});
+  const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState(false);
 
-  const handleAddSchema = () => {
-    const selectedSchema = schemaOptions.find(
-      (option) => option.value === selectedSchemaValue
-    );
-
-    if (selectedSchema && !selectedSchemas.includes(selectedSchema)) {
-      setSelectedSchemas([...selectedSchemas, selectedSchema]);
-      setSchemaOptions([...schemaOptions, ...additionalSchemaOptions]);
-      setSelectedSchemaValue("");
-    } else {
-      setError(true);
-      setTimeout(() => {
-        setError(false);
-      }, 2000);
-    }
-  };
+  const schemaOptions = selectedSchemas.length
+    ? initialSchemaOptions.filter(
+        (option) =>
+          !selectedSchemas.some((schema) => schema.value === option.value)
+      )
+    : initialSchemaOptions;
 
   const handleSchemaChange = (schemaValue, newValue) => {
-    setSelectedValues((prev) => ({
-      ...prev,
+    setSelectedValues((prevValues) => ({
+      ...prevValues,
       [schemaValue]: newValue,
     }));
   };
 
+  const handleRemoveSchema = (schemaToRemove) => {
+    setSelectedSchemas((prevSchemas) =>
+      prevSchemas.filter((schema) => schema.value !== schemaToRemove.value)
+    );
+    setSelectedValues((prevValues) => {
+      const updatedValues = { ...prevValues };
+      delete updatedValues[schemaToRemove.value];
+      return updatedValues;
+    });
+  };
+
+  const handleSelectSchema = (value) => {
+    const selectedSchema = schemaOptions.find(
+      (option) => option.value === value
+    );
+    if (selectedSchema && !selectedSchemas.includes(selectedSchema)) {
+      setSelectedSchemas([...selectedSchemas, selectedSchema]);
+      setSelectedValues((prevValues) => ({
+        ...prevValues,
+        [selectedSchema.value]: selectedSchema.value,
+      }));
+      setShowDropdown(false);
+    }
+  };
+
   const handleSaveSegment = (e) => {
     e.preventDefault();
+
     const segment = {
       segment_name: segmentName,
       schema: selectedSchemas.map((schema) => ({
         [schema.value]: schema.label,
       })),
     };
+
     console.log("Segment:", segment);
-    if (Object.keys(selectedValues).length > 0)
+    if (Object.keys(selectedValues).length > 0) {
       console.log("Selected Values:", selectedValues);
+    }
+
     onClose();
     setSegmentName("");
     setSelectedSchemas([]);
@@ -69,7 +83,7 @@ function Sidebar({ onClose }) {
   };
 
   return (
-    <div className="absolute z-10 overflow-auto right-0 top-0 w-[25rem] h-full bg-white shadow-lg ">
+    <div className="absolute z-10 overflow-auto right-0 top-0 w-[25rem] h-full bg-white shadow-lg">
       {/* Header */}
       <div className="flex gap-2 px-4 py-6 items-center text-white bg-[#38B4C2]">
         <FaChevronLeft
@@ -77,13 +91,13 @@ function Sidebar({ onClose }) {
           onClick={onClose}
           title="close"
         />
-
         <h2 className="text-lg font-semibold">Saving Segment</h2>
       </div>
-      {/* form */}
+
+      {/* Form */}
       <form className="h-[50%]" onSubmit={handleSaveSegment}>
-        {/* top */}
-        <div className="flex-col flex gap-4 p-4 ">
+        {/* Top Section */}
+        <div className="flex-col flex gap-4 p-4">
           <label htmlFor="segmentName">Enter the name of the segment</label>
           <input
             required
@@ -92,28 +106,27 @@ function Sidebar({ onClose }) {
             placeholder="Name of the segment"
             value={segmentName}
             onChange={(e) => setSegmentName(e.target.value)}
-            className="w-full p-2 border  outline-none
-             border-gray-300 rounded"
+            className="w-full p-2 border outline-none border-gray-300 rounded"
           />
           <span>
             To save your segment, you need to add the schema to build the query.
           </span>
           <div className="flex text-sm items-center justify-end gap-4">
             <span className="flex gap-1 items-center">
-              <Dot background={green}></Dot>- User
+              <Dot background={green} />- User
             </span>
             <span className="flex gap-1 items-center">
-              <Dot background={pink}></Dot>- Group
+              <Dot background={pink} />- Group
             </span>
           </div>
         </div>
-        {/* mid */}
+
+        {/* Mid Section */}
         <div className="h-[100%] overflow-auto">
           <div className="min-h-[100%] px-6 p-4">
-            {/* Dynamically dropdowns */}
             {selectedSchemas.map((schema, index) => (
               <div key={index} className="flex items-center gap-4 mb-3">
-                <Dot background={index % 2 == 0 ? green : pink}></Dot>
+                <Dot background={index % 2 === 0 ? green : pink} />
                 <select
                   value={selectedValues[schema.value] || schema.value}
                   className="w-full p-2 border border-gray-300 rounded"
@@ -122,45 +135,54 @@ function Sidebar({ onClose }) {
                   }
                 >
                   <option value={schema.value}>{schema.label}</option>
-                  {additionalSchemaOptions.map((option) => (
+                  {schemaOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSchema(schema)}
+                  className="text-red-500 hover:text-red-700"
+                  title="Remove Schema"
+                >
+                  <FaMinus />
+                </button>
               </div>
             ))}
-            {/* Static Dropdown*/}
-            <div className="flex items-center gap-4 mb-3">
-              <Dot background={gray}></Dot>
-              <select
-                value={selectedSchemaValue}
-                onChange={(e) => setSelectedSchemaValue(e.target.value)}
-                className={`w-full p-2 outline-none border cursor-pointer  border-gray-300 rounded ${
-                  error && "border-red-500"
-                }`}
-              >
-                <option value="">Add schema to segment</option>
-                {initialSchemaOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex text-sm gap-3 pl-6 items-center">
-              {" "}
-              <a
-                onClick={handleAddSchema}
-                className="w-fit  flex items-center gap-1 cursor-pointer border-b-2 border-[#2cd7af] text-[#2cd7af]"
-              >
-                <FaPlus /> Add new schema
-              </a>
-            </div>
+            {schemaOptions.length > 0 && (
+              <>
+                {" "}
+                <div className="flex items-center gap-4 mb-3">
+                  {/* Static Dropdown */}
+                  <Dot background={gray} />
+                  <select
+                    value=""
+                    onChange={(e) => handleSelectSchema(e.target.value)}
+                    className={`w-full p-2 outline-none border cursor-pointer border-gray-300 rounded ${
+                      error ? "border-red-500" : ""
+                    }`}
+                  >
+                    <option value="">Add schema to segment</option>
+                    {schemaOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>{" "}
+                </div>
+                <div className="flex text-sm gap-3 pl-6 items-center">
+                  <a className="w-fit flex items-center gap-1 cursor-pointer border-b-2 border-[#2cd7af] text-[#2cd7af]">
+                    <FaPlus /> Add new schema
+                  </a>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Bottom */}
+        {/* Bottom Section */}
         <div className="bg-white w-full px-6 py-4 flex gap-4">
           <button
             type="submit"
@@ -168,7 +190,7 @@ function Sidebar({ onClose }) {
           >
             Save the Segment
           </button>
-          <button onClick={onClose} className=" text-pink-500 font-bold ">
+          <button onClick={onClose} className="text-pink-500 font-bold">
             Cancel
           </button>
         </div>

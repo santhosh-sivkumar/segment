@@ -6,3 +6,6 @@
   border-radius: 100%; /* Tailwind rounded-full */
   margin-right: 0.5rem; /* Tailwind mr-2 */
 }
+html {
+  user-select: none;
+}
